@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Brush Tool</title>
+<style>
+    #canvasContainer {
+        position: relative;
+    }
+    #canvas {
+        border: 1px solid black;
+        cursor: crosshair;
+    }
+    #controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+    }
+    #controls > div {
+        margin-right: 10px;
+    }
+</style>
+</head>
+<body>
+    <input type="file" id="imageInput" accept="image/*">
+    <input type="text" id="imageLink" placeholder="Paste image URL">
+    <button onclick="loadImage()">Load Image</button><br>
+    <div id="canvasContainer">
+        <canvas id="canvas" width="800" height="600"></canvas>
+        <canvas id="cloneCanvas" width="800" height="600" style="display:none"></canvas>
+    </div>
+    <div id="controls">
+        <div>
+            <label for="brushSize">Brush Size:</label>
+            <input type="range" id="brushSize" min="1" max="50" value="10">
+        </div>
+        <div>
+            <label for="opacity">Opacity:</label>
+            <input type="range" id="opacity" min="0" max="1" step="0.1" value="1">
+        </div>
+        <div>
+            <label for="brushShape">Brush Shape:</label>
+            <select id="brushShape">
+                <option value="round">Round</option>
+                <option value="square">Square</option>
+                <option value="star">Star</option>
+            </select>
+        </div>
+        <div>
+            <label for="brushColor">Brush Color:</label>
+            <input type="color" id="brushColor" value="#000000">
+        </div>
+        <button onclick="clearCanvas()">Clear Canvas</button>
+        <button onclick="undo()">Undo</button>
+        <button onclick="activateCloneTool()">Clone Tool</button>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const cloneCanvas = document.getElementById('cloneCanvas');
+        const cloneCtx = cloneCanvas.getContext('2d');
+        let painting = false;
+        let lastX, lastY;
+        let cloneToolActive = false;
+
+        canvas.addEventListener('mousedown', startPosition);
+        canvas.addEventListener('mouseup', endPosition);
+        canvas.addEventListener('mousemove', draw);
+
+        function startPosition(e) {
+            painting = true;
+            draw(e);
+        }
+
+        function endPosition() {
+            painting = false;
+            ctx.beginPath();
+        }
+
+        function draw(e) {
+            if (!painting) return;
+
+            const brushSize = document.getElementById('brushSize').value;
+            const brushShape = document.getElementById('brushShape').value;
+            const opacity = document.getElementById('opacity').value;
+            const brushColor = document.getElementById('brushColor').value;
+
+            ctx.lineWidth = brushSize;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = brushColor;
+            ctx.globalAlpha = opacity;
+
+            const x = e.clientX - canvas.offsetLeft;
+            const y = e.clientY - canvas.offsetTop;
+
+            if (brushShape === 'round') {
+                ctx.beginPath();
+                ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+                ctx.fillStyle = brushColor;
+                ctx.fill();
+                ctx.closePath();
+            } else if (brushShape === 'square') {
+                ctx.fillRect(x - brushSize / 2, y - brushSize / 2, brushSize, brushSize);
+            } else if (brushShape === 'star') {
+                drawStar(ctx, x, y, 5, brushSize / 2, brushSize / 4);
+            }
+
+            if (cloneToolActive) {
+                cloneCtx.drawImage(canvas, 0, 0);
+                cloneToolActive = false;
+            }
+
+            lastX = x;
+            lastY = y;
+        }
+
+        function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+            let rot = (Math.PI / 2) * 3;
+            let x = cx;
+            let y = cy;
+            let step = Math.PI / spikes;
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - outerRadius);
+            for (let i = 0; i < spikes; i++) {
+                x = cx + Math.cos(rot) * outerRadius;
+                y = cy + Math.sin(rot) * outerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+
+                x = cx + Math.cos(rot) * innerRadius;
+                y = cy + Math.sin(rot) * innerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+            }
+            ctx.lineTo(cx, cy - outerRadius);
+            ctx.closePath();
+            ctx.fillStyle = document.getElementById('brushColor').value;
+            ctx.fill();
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            cloneCtx.clearRect(0, 0, cloneCanvas.width, cloneCanvas.height);
+        }
+
+        function undo() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(cloneCanvas, 0, 0);
+        }
+
+        function loadImage() {
+            const imageInput = document.getElementById('imageInput');
+            const imageLink = document.getElementById('imageLink');
+
+            if (imageInput.files && imageInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.onload = function () {
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(imageInput.files[0]);
+            } else if (imageLink.value) {
+                const img = new Image();
+                img.onload = function () {
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                };
+                img.src = imageLink.value;
+            } else {
+                alert("Please select an image or paste a link first.");
+            }
+        }
+
+        function activateCloneTool() {
+            cloneToolActive = true;
+        }
+    </script>
+</body>
+</html>

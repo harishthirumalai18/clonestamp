@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simple Brush Tool</title>
+<style>
+    #canvas {
+        border: 1px solid black;
+        cursor: crosshair;
+    }
+</style>
+</head>
+<body>
+    <input type="file" id="imageInput" accept="image/*">
+    <input type="text" id="imageLink" placeholder="Paste image URL">
+    <button onclick="loadImage()">Load Image</button><br>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <div id="controls">
+        <div>
+            <label for="brushSize">Brush Size:</label>
+            <input type="range" id="brushSize" min="1" max="50" value="10">
+        </div>
+        <div>
+            <label for="opacity">Opacity:</label>
+            <input type="range" id="opacity" min="0" max="1" step="0.1" value="1">
+        </div>
+        <div>
+            <label for="brushShape">Brush Shape:</label>
+            <select id="brushShape">
+                <option value="round">Round</option>
+                <option value="square">Square</option>
+                <option value="star">Star</option>
+            </select>
+        </div>
+        <div>
+            <label for="brushColor">Brush Color:</label>
+            <input type="color" id="brushColor" value="#000000">
+        </div>
+        <button onclick="clearCanvas()">Clear Canvas</button>
+        <button onclick="undo()">Undo</button>
+        <button onclick="activateCloneTool()">Clone Tool</button>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let painting = false;
+
+        canvas.addEventListener('mousedown', startPosition);
+        canvas.addEventListener('mouseup', endPosition);
+        canvas.addEventListener('mousemove', draw);
+
+        function startPosition(e) {
+            painting = true;
+            draw(e);
+        }
+
+        function endPosition() {
+            painting = false;
+            ctx.beginPath();
+        }
+
+        function draw(e) {
+            if (!painting) return;
+            ctx.lineWidth = document.getElementById('brushSize').value;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = document.getElementById('brushColor').value;
+
+            ctx.lineTo(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop);
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function loadImage() {
+            const imageInput = document.getElementById('imageInput');
+            const imageLink = document.getElementById('imageLink');
+
+            if (imageInput.files && imageInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.onload = function () {
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(imageInput.files[0]);
+            } else if (imageLink.value) {
+                const img = new Image();
+                img.onload = function () {
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                };
+                img.src = imageLink.value;
+            } else {
+                alert("Please select an image or paste a link first.");
+            }
+        }
+    </script>
+</body>
+</html>

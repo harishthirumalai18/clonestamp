@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clone Stamp Tool</title>
+<style>
+    #canvas {
+        border: 1px solid black;
+        cursor: crosshair;
+    }
+</style>
+</head>
+<body>
+    <input type="file" id="imageInput" accept="image/*">
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <button onclick="toggleCloneStamp()">Toggle Clone Stamp</button>
+    <button onclick="undo()">Undo</button>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let isCloning = false;
+        let cloneData;
+        let historyStack = [];
+
+        canvas.addEventListener('mousedown', startPosition);
+        canvas.addEventListener('mouseup', endPosition);
+
+        function startPosition(e) {
+            if (!isCloning) return;
+            cloneData = ctx.getImageData(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 50, 50);
+            drawCloneStamp(e);
+        }
+
+        function endPosition() {
+            if (!isCloning) return;
+            isCloning = false;
+            saveCanvasState();
+        }
+
+        function drawCloneStamp(e) {
+            const offsetX = e.clientX - canvas.offsetLeft - 25;
+            const offsetY = e.clientY - canvas.offsetTop - 25;
+            ctx.putImageData(cloneData, offsetX, offsetY);
+        }
+
+        function toggleCloneStamp() {
+            isCloning = !isCloning;
+        }
+
+        function undo() {
+            if (historyStack.length > 0) {
+                const lastState = historyStack.pop();
+                ctx.putImageData(lastState, 0, 0);
+            }
+        }
+
+        function saveCanvasState() {
+            historyStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+        }
+
+        const imageInput = document.getElementById('imageInput');
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.addEventListener('paste', function(event) {
+            const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+            let blob = null;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf("image") !== -1) {
+                    blob = items[i].getAsFile();
+                    break;
+                }
+            }
+            if (blob !== null) {
+                const image = new Image();
+                image.onload = function() {
+                    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+                };
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    image.src = event.target.result;
+                };
+                reader.readAsDataURL(blob);
+            } else {
+                alert('No image found in clipboard!');
+            }
+        });
+    </script>
+</body>
+</html>
